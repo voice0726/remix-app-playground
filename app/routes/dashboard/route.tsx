@@ -1,5 +1,5 @@
 import { LoaderFunctionArgs } from '@remix-run/node';
-import { authenticator, Session } from '~/auth/auth.server';
+import { authenticator } from '~/auth/auth.server';
 import { useLoaderData } from '@remix-run/react';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -9,7 +9,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function DashboardRoute() {
-  const { user } = useLoaderData<Session>();
+  const { user } = useLoaderData<typeof loader>();
 
   return <div>Welcome, {user?.email}!</div>;
 }
