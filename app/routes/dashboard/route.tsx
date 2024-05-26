@@ -1,9 +1,11 @@
-import { LoaderFunctionArgs } from '@remix-run/node';
+import { json, LoaderFunctionArgs } from '@remix-run/node';
 import { checkSession } from '~/auth/auth.server';
 import { useLoaderData } from '@remix-run/react';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  return await checkSession(request);
+  const { session, headers } = await checkSession(request);
+
+  return json({ session }, { headers });
 }
 
 export default function DashboardRoute() {

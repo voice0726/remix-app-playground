@@ -2,7 +2,6 @@ import { Authenticator } from 'remix-auth';
 import { commitSession, getSession, sessionStorage } from '~/auth/session.server';
 import { OAuth2Strategy } from 'remix-auth-oauth2';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { json } from '@remix-run/node';
 
 export type Session = {
   accessToken: string;
@@ -46,7 +45,7 @@ export const oauth2Strategy = new OAuth2Strategy(
 
 authenticator.use(oauth2Strategy, 'ore-no-idp');
 
-export const checkSession = async (request: Request) => {
+export const checkSession = async (request: Request): Promise<{ session: Session; headers?: HeadersInit }> => {
   const session = await authenticator.isAuthenticated(request, {
     failureRedirect: '/login',
   });
@@ -56,20 +55,24 @@ export const checkSession = async (request: Request) => {
   });
   if (res.status === 401) {
     if (!session.refreshToken) {
+      console.log('no refresh token, redirect to login');
       return await authenticator.logout(request, { redirectTo: '/login' });
+    } else {
+      const { access_token, refresh_token } = await oauth2Strategy.refreshToken(session.refreshToken);
+      console.log('current tokens', session.accessToken, session.refreshToken);
+      console.log('refreshed tokens', access_token, refresh_token);
+
+      const s = await getSession(request.headers.get('Cookie'));
+      s.set(authenticator.sessionKey, {
+        ...s.get(authenticator.sessionKey),
+        accessToken: access_token,
+        refreshToken: refresh_token,
+      });
+      session.refreshToken = refresh_token;
+      session.accessToken = access_token;
+
+      return { session, headers: { 'Set-Cookie': await commitSession(s) } };
     }
-    const { access_token, refresh_token } = await oauth2Strategy.refreshToken(session.refreshToken);
-
-    const s = await getSession(request.headers.get('Cookie'));
-    s.set(authenticator.sessionKey, {
-      ...s.get(authenticator.sessionKey),
-      accessToken: access_token,
-      refreshToken: refresh_token,
-    });
-    session.refreshToken = refresh_token;
-    session.accessToken = access_token;
-
-    return json({ session }, { headers: { 'Set-Cookie': await commitSession(s) } });
   }
   return { session };
 };
